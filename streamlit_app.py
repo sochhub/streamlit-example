@@ -1,8 +1,8 @@
 import streamlit as st  
-#from textblob import TextBlob
+from textblob import TextBlob
 import pandas as pd
 import altair as alt
-#from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 
 # Fxn
