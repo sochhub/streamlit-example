@@ -1,38 +1,103 @@
-from collections import namedtuple
-import altair as alt
-import math
+import streamlit as st  
+from textblob import TextBlob
 import pandas as pd
-import streamlit as st
-
-"""
-# Welcome to Streamlit!
-
-Edit `/streamlit_app.py` to customize this app to your heart's desire :heart:
-
-If you have any questions, checkout our [documentation](https://docs.streamlit.io) and [community
-forums](https://discuss.streamlit.io).
-
-In the meantime, below is an example of what you can do with just a few lines of code:
-"""
+import altair as alt
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 
-with st.echo(code_location='below'):
-    total_points = st.slider("Number of points in spiral", 1, 5000, 2000)
-    num_turns = st.slider("Number of turns in spiral", 1, 100, 9)
+# Fxn
+def convert_to_df(sentiment):
+	sentiment_dict = {'polarity':sentiment.polarity,'subjectivity':sentiment.subjectivity}
+	sentiment_df = pd.DataFrame(sentiment_dict.items(),columns=['metric','value'])
+	return sentiment_df
 
-    Point = namedtuple('Point', 'x y')
-    data = []
+def analyze_token_sentiment(docx):
+	analyzer = SentimentIntensityAnalyzer()
+	pos_list = []
+	neg_list = []
+	neu_list = []
+	for i in docx.split():
+		res = analyzer.polarity_scores(i)['compound']
+		if res > 0.1:
+			pos_list.append(i)
+			pos_list.append(res)
 
-    points_per_turn = total_points / num_turns
+		elif res <= -0.1:
+			neg_list.append(i)
+			neg_list.append(res)
+		else:
+			neu_list.append(i)
 
-    for curr_point_num in range(total_points):
-        curr_turn, i = divmod(curr_point_num, points_per_turn)
-        angle = (curr_turn + 1) * 2 * math.pi * i / points_per_turn
-        radius = curr_point_num / total_points
-        x = radius * math.cos(angle)
-        y = radius * math.sin(angle)
-        data.append(Point(x, y))
+	result = {'positives':pos_list,'negatives':neg_list,'neutral':neu_list}
+	return result 
 
-    st.altair_chart(alt.Chart(pd.DataFrame(data), height=500, width=500)
-        .mark_circle(color='#0068c9', opacity=0.5)
-        .encode(x='x:Q', y='y:Q'))
+
+
+
+		
+
+
+
+
+
+
+def main():
+	st.title("Sentiment Analysis NLP App")
+	st.subheader("Streamlit Projects")
+
+	menu = ["Home","About"]
+	choice = st.sidebar.selectbox("Menu",menu)
+
+	if choice == "Home":
+		st.subheader("Home")
+		with st.form(key='nlpForm'):
+			raw_text = st.text_area("Enter Text Here")
+			submit_button = st.form_submit_button(label='Analyze')
+
+		# layout
+		col1,col2 = st.columns(2)
+		if submit_button:
+
+			with col1:
+				st.info("Results")
+				sentiment = TextBlob(raw_text).sentiment
+				st.write(sentiment)
+
+				# Emoji
+				if sentiment.polarity > 0:
+					st.markdown("Sentiment:: Positive :smiley: ")
+				elif sentiment.polarity < 0:
+					st.markdown("Sentiment:: Negative :angry: ")
+				else:
+					st.markdown("Sentiment:: Neutral 😐 ")
+
+				# Dataframe
+				result_df = convert_to_df(sentiment)
+				st.dataframe(result_df)
+
+				# Visualization
+				c = alt.Chart(result_df).mark_bar().encode(
+					x='metric',
+					y='value',
+					color='metric')
+				st.altair_chart(c,use_container_width=True)
+
+
+
+			with col2:
+				st.info("Token Sentiment")
+
+				token_sentiments = analyze_token_sentiment(raw_text)
+				st.write(token_sentiments)
+
+
+
+
+
+
+	else:
+		st.subheader("About")
+
+
+if __name__ == '__main__':
+	main()
